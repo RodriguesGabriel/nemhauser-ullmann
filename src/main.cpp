@@ -27,7 +27,7 @@ class Knapsack {
             return (weight < other.weight) || ((weight == other.weight) && (profit > other.profit));
         }
 
-        inline Point operator+(const Point &other) {
+        inline Point operator+(const Point &other) const {
             return {weight + other.weight, profit + other.profit};
         }
     };
@@ -112,26 +112,20 @@ class Knapsack {
         auto pointsA = nemhauser_ullmann(0, m_size / 2);
         auto pointsB = nemhauser_ullmann(m_size / 2, m_size);
 
-        std::vector<Point> sumPoints;
+        std::vector<Point> sumPoints{{0, 0}};
         sumPoints.reserve((pointsA.size() - 1) * (pointsB.size() - 1));
 
-        auto cmp = [](const Point &a, const Point &b) { return a < b; };
-        std::set<Point, decltype(cmp)> maxima(cmp);
-
-        Point *pA, *pB;
         for (size_t i = 1; i < pointsA.size(); ++i) {
-            pA = &pointsA[i];
-            for (size_t j = 1; j < pointsB.size(); ++j) {
-                pB = &pointsB[j];
-                sumPoints.emplace_back(std::move(*pA + *pB));
-            }
+            auto shifted = shiftAllPoints(pointsB, pointsA[i]);
+            // sumPoints = merge(sumPoints, shifted);
+            sumPoints.insert(sumPoints.end(), std::make_move_iterator(shifted.begin()),
+                             std::make_move_iterator(shifted.end()));
         }
 
         __gnu_parallel::sort(sumPoints.begin(), sumPoints.end(),
                              [](const Point &a, const Point &b) { return a < b; });
 
         std::vector<Point> cleanSumPoints;
-        sumPoints.reserve(sumPoints.size());
 
         T previousWeight = -1;
         U pmax = -1;
@@ -143,6 +137,7 @@ class Knapsack {
             previousWeight = point.weight;
         }
 
+        // auto points = merge(merge(pointsA, sumPoints), merge(pointsB, sumPoints));
         auto points = merge(merge(pointsA, cleanSumPoints), pointsB);
         printPoints(points);
     }
