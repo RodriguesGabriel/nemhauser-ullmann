@@ -1,5 +1,5 @@
 CXX	  := g++
-CXX_FLAGS := -Wall -Wextra -g -ggdb -Werror -pedantic -Wshadow -std=c++17 -DNDEBUG -O3 -pthread -fopenmp
+CXX_FLAGS := -Wall -Wextra -g -ggdb -Werror -pedantic -Wshadow -std=c++17 -DNDEBUG -pthread -fopenmp -Ofast
 #  -fopenmp
 LIBRARIES := -lm
 

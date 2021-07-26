@@ -34,12 +34,13 @@ class Knapsack {
         return copy;
     }
 
-    void nemhauser_ullmann() {
+    void nemhauserUllmann() {
         // initialize Pareto set
         std::vector<Point> points{{0, 0}, items[0]};
         // iterate
         for (size_t i = 1; i < m_size; ++i) {
-            points = merge(points, shiftItems(points, items[i]));
+            auto shifted = shiftItems(points, items[i]);
+            points = merge(points, shifted);
         }
         printPoints(points);
     }
@@ -97,12 +98,12 @@ int main() {
     std::ios_base::sync_with_stdio(0);
     std::cin.tie(0);
 
-    Knapsack<int, int> sack;
+    Knapsack<int, float> sack;
 
     sack.read();
 
     auto start = std::chrono::high_resolution_clock::now();
-    sack.nemhauser_ullmann();
+    sack.nemhauserUllmann();
     auto end = std::chrono::high_resolution_clock::now();
     std::cerr << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << '\n';
     return EXIT_SUCCESS;

@@ -1,4 +1,5 @@
 #include <chrono>
+#include <future>
 #include <iostream>
 #include <parallel/algorithm>
 #include <set>
@@ -31,16 +32,16 @@ class Knapsack {
             return {weight + other.weight, profit + other.profit};
         }
     };
-    int m_size;
+    size_t m_size;
     T m_threshold;
     std::vector<Point> items;
 
    public:
     Knapsack() {}
-    Knapsack(const int &size, const T &threshold)
+    Knapsack(const int size, const T &threshold)
         : m_size(size), m_threshold(threshold), items(size) {}
 
-    void shiftPoints(std::vector<Point> &points, const Point &newPoint, const int &begin,
+    void shiftPoints(std::vector<Point> &points, const Point &newPoint, const int begin,
                      const int &end) {
         for (int i = begin; i < end; ++i) {
             points[i].weight += newPoint.weight;
@@ -108,48 +109,61 @@ class Knapsack {
         // return copy;
     }
 
-    void parallel_nemhauser_ullmann() {
-        auto pointsA = nemhauser_ullmann(0, m_size / 2);
-        auto pointsB = nemhauser_ullmann(m_size / 2, m_size);
+    auto bigSetNemhauserUllmann(const std::vector<Point> &pA, const std::vector<Point> &pB) {
+        // auto futureA = std::async(std::launch::async, [&]() {
+        //     std::vector<Point> sumPoints{{0, 0}};
 
+        //     for (size_t i = 0; i < pointsA.size() / 2; ++i) {
+        //         sumPoints = merge(sumPoints, shiftAllPoints(pointsB, pointsA[i]));
+        //     }
+        //     return sumPoints;
+        // });
+        // auto futureB = std::async(std::launch::async, [&]() {
+        //     std::vector<Point> sumPoints{{0, 0}};
+
+        //     for (size_t i = pointsA.size() / 2; i < pointsA.size(); ++i) {
+        //         sumPoints = merge(sumPoints, shiftAllPoints(pointsB, pointsA[i]));
+        //     }
+        //     return sumPoints;
+        // });
+        // auto pA = futureA.get();
+        // auto pB = futureB.get();
         std::vector<Point> sumPoints{{0, 0}};
-        sumPoints.reserve((pointsA.size() - 1) * (pointsB.size() - 1));
 
-        for (size_t i = 1; i < pointsA.size(); ++i) {
-            auto shifted = shiftAllPoints(pointsB, pointsA[i]);
-            // sumPoints = merge(sumPoints, shifted);
-            sumPoints.insert(sumPoints.end(), std::make_move_iterator(shifted.begin()),
-                             std::make_move_iterator(shifted.end()));
+        for (size_t i = 0; i < pA.size(); ++i) {
+            sumPoints = merge(sumPoints, shiftAllPoints(pB, pA[i]));
         }
-
-        __gnu_parallel::sort(sumPoints.begin(), sumPoints.end(),
-                             [](const Point &a, const Point &b) { return a < b; });
-
-        std::vector<Point> cleanSumPoints;
-
-        T previousWeight = -1;
-        U pmax = -1;
-        for (const auto &point : sumPoints) {
-            if (point.weight != previousWeight && point.profit > pmax) {
-                pmax = point.profit;
-                cleanSumPoints.emplace_back(std::move(point));
-            }
-            previousWeight = point.weight;
-        }
-
-        // auto points = merge(merge(pointsA, sumPoints), merge(pointsB, sumPoints));
-        auto points = merge(merge(pointsA, cleanSumPoints), pointsB);
-        printPoints(points);
+        return sumPoints;
     }
 
-    void nemhauser_ullmann() {
-        auto points = nemhauser_ullmann(0, items.size());
-        printPoints(points);
+    // std::mutex mut;
+    // {
+    //     std::scoped_lock lock(mut);
+    //     std::cerr << start << ' ' << end << '\n';
+    // }
+
+    auto recursion(const size_t &start, const size_t &end, const int divisions, const int depth) {
+        if (depth == divisions) {
+            return nemhauserUllmann(start, end);
+        }
+        auto futureA = std::async(std::launch::async, [&]() {
+            return recursion(start, end / 2 + start / 2, divisions, depth + 1);
+        });
+        std::cerr << "futureA\n";
+        auto futureB = std::async(std::launch::async, [&]() {
+            return recursion(end / 2 + start / 2, end, divisions, depth + 1);
+        });
+        std::cerr << "futureB\n";
+        return bigSetNemhauserUllmann(futureA.get(), futureB.get());
     }
 
-    auto nemhauser_ullmann(const int &begin, const int &end) {
+    void nemhauserUllmann() { printPoints(nemhauserUllmann(0, m_size)); }
+
+    void parallelNemhauserUllmann() { printPoints(recursion(0, m_size, 1, 0)); }
+
+    auto nemhauserUllmann(const int begin, const int end) {
         // initialize Pareto set
-        std::vector<Point> points{{0, 0}, items[begin]};
+        std::vector<Point> points{{0, 0}, std::move(items[begin])};
         // iterate
         for (int i = begin + 1; i < end; ++i) {
             points = merge(points, shiftAllPoints(points, items[i]));
@@ -205,7 +219,7 @@ class Knapsack {
         items.resize(m_size);
 
         // read items
-        for (int i = 0; i < m_size; ++i) std::cin >> items[i].weight >> items[i].profit;
+        for (size_t i = 0; i < m_size; ++i) std::cin >> items[i].weight >> items[i].profit;
     }
 };
 
@@ -217,9 +231,21 @@ int main() {
 
     sack.read();
 
-    auto start = std::chrono::high_resolution_clock::now();
-    sack.parallel_nemhauser_ullmann();
-    auto end = std::chrono::high_resolution_clock::now();
-    std::cerr << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << '\n';
+    auto parallelStart = std::chrono::high_resolution_clock::now();
+    sack.parallelNemhauserUllmann();
+    auto parallelEnd = std::chrono::high_resolution_clock::now();
+    std::cerr << "Parallel:\t"
+              << std::chrono::duration_cast<std::chrono::milliseconds>(parallelEnd - parallelStart)
+                     .count()
+              << " ms\n";
+
+    auto sequentialStart = std::chrono::high_resolution_clock::now();
+    sack.nemhauserUllmann();
+    auto sequentialEnd = std::chrono::high_resolution_clock::now();
+    std::cerr << "Sequential:\t"
+              << std::chrono::duration_cast<std::chrono::milliseconds>(sequentialEnd -
+                                                                       sequentialStart)
+                     .count()
+              << " ms\n";
     return 0;
 }
