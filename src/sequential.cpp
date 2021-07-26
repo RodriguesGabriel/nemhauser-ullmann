@@ -12,9 +12,7 @@ class Knapsack {
         U profit;
 
         inline bool operator<(const Point &other) const {
-            return (weight < other.weight) ||
-                ((weight == other.weight) &&
-                 (profit > other.profit));
+            return (weight < other.weight) || ((weight == other.weight) && (profit > other.profit));
         }
     };
     size_t m_size;
@@ -39,38 +37,39 @@ class Knapsack {
         std::vector<Point> points{{0, 0}, items[0]};
         // iterate
         for (size_t i = 1; i < m_size; ++i) {
-            auto shifted = shiftItems(points, items[i]);
-            points = merge(points, shifted);
+            points = merge(points, shiftItems(points, items[i]));
         }
         printPoints(points);
     }
 
     auto merge(const std::vector<Point> &l, const std::vector<Point> &ll) {
-        U pmax = -1;
         std::vector<Point> E;
         E.reserve(ll.size() * 2);
-        auto lbegin = l.begin(), llbegin = ll.begin();
+
+        U pmax = -1;
+        auto pL = l.begin(), pLL = ll.begin();
         while (true) {
-            for (; lbegin != l.end(); ++lbegin) {
-                if ((*lbegin).profit > pmax) break;
+            for (; pL != l.end(); ++pL) {
+                if (pL->profit > pmax) break;
             }
-            for (; llbegin != ll.end(); ++llbegin) {
-                if ((*llbegin).profit > pmax) break;
+            for (; pLL != ll.end(); ++pLL) {
+                if (pLL->profit > pmax) break;
             }
-            if (lbegin == l.end()) {
-                E.insert(E.end(), llbegin, ll.end());
+            if (pL == l.end()) {
+                E.insert(E.end(), std::make_move_iterator(pLL), std::make_move_iterator(ll.end()));
                 return E;
             }
-            if (llbegin == ll.end()) {
-                E.insert(E.end(), lbegin, l.end());
+            if (pLL == ll.end()) {
+                E.insert(E.end(), std::make_move_iterator(pL), std::make_move_iterator(l.end()));
                 return E;
             }
-            if ((*lbegin) < (*llbegin)) {
-                E.push_back(*lbegin);
-                pmax = (*lbegin).profit;
+            // (weight < other.weight) || ((weight == other.weight) && (profit > other.profit));
+            if (*pL < *pLL) {
+                E.emplace_back(std::move(*pL));
+                pmax = pL->profit;
             } else {
-                E.push_back(*llbegin);
-                pmax = (*llbegin).profit;
+                E.emplace_back(std::move(*pLL));
+                pmax = pLL->profit;
             }
         }
     }

@@ -1,14 +1,16 @@
-CXX	  := g++
-CXX_FLAGS := -Wall -Wextra -g -ggdb -Werror -pedantic -Wshadow -std=c++17 -DNDEBUG -pthread -fopenmp -Ofast
-#  -fopenmp
-LIBRARIES := -lm
+CXX	  		:= g++
+CXX_FLAGS	:= -Wall -Wextra -g -ggdb -Werror -pedantic -Wshadow -std=c++17 -DNDEBUG -pthread -fopenmp -Ofast
+LIBRARIES	:= -lm
 
-all: main
+all: parallel parallel_merge sequential
 
-main: src/main.cpp
+parallel: src/parallel.cpp
 	$(CXX) $(CXX_FLAGS) $^ -o bin/$@ $(LIBRARIES)
 
-initial: src/initial.cpp
+parallel_merge: src/parallel_merge.cpp
+	$(CXX) $(CXX_FLAGS) $^ -o bin/$@ $(LIBRARIES)
+
+sequential: src/sequential.cpp
 	$(CXX) $(CXX_FLAGS) $^ -o bin/$@ $(LIBRARIES)
 
 knapsack: src/utils/knapsack.cpp
